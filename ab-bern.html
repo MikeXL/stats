@@ -1,0 +1,106 @@
+<html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.5.3/jstat.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script lang="jscript">
+//cohen's d effect size
+function dcalc(c1, n1, c2, n2){
+	mu1 = jStat.beta.mean(c1+1, n1-c1+1);
+	mu2 = jStat.beta.mean(c2+1, n2-c2+1);
+	var1 = jStat.beta.variance(c1+1, n1-c1+1);
+	var2 = jStat.beta.variance(c2+1, n2-c2+1);
+
+	return((mu1-mu2)/Math.sqrt((var1+var2)/2))
+}
+
+function runtest() {
+	var c1 = document.getElementById("c1").value;
+	var n1 = document.getElementById("n1").value;
+	var c2 = document.getElementById("c2").value;
+	var n2 = document.getElementById("n2").value;
+
+	berntest(c1, n1, c2, n2);
+	document.getElementById("d").innerHTML = dcalc(c1, n1, c2, n2).toFixed(2);
+}
+
+function berntest(c1, n1, c2, n2) {
+	var lp1=[];
+	var lp2=[];
+	var N = 10000;
+
+	for(i=0;i<N;i++){
+		lp1[i] = jStat.beta.sample(c1+1, n1-c1+1);
+		lp2[i] = jStat.beta.sample(c2+1, n2-c2+1);
+	}
+
+	var sample1 = {
+ 	 x: lp1,
+ 	 type: "histogram",
+ 	 name: "Sample I",
+ 	 opacity: 0.5,
+ 	 marker: {
+  	   color: '#66cc00',
+  	},
+	};
+	var sample2 = {
+ 	 x: lp2,
+ 	 type: "histogram",
+ 	 name: "Sample II",
+ 	 opacity: 0.6,
+ 	 marker: {
+ 	   color: '#49166d',
+  		},
+	};
+
+	var data = [sample1, sample2];
+	var layout = {
+	  barmode: "overlay"
+	};
+
+	CANVAS = document.getElementById('CANVAS');
+	Plotly.newPlot(CANVAS, data, layout);
+
+}
+</script>
+<body>
+<div id="CANVAS"></div>
+
+<table align="center" border=0>
+<tr>
+<th></th>
+<th># successes</th>
+<th># trials </th>
+</tr>
+
+<tr>
+	<td>Sample I</td>
+	<td><input type="input" id="c1" value=14 oninput="runtest();"></td>
+	<td><input type="input" id="n1" value=100 oninput="runtest();"></td>
+</tr>
+
+<tr>
+	<td>Sample II</td>
+	<td><input type="input" id="c2" value=20 oninput="runtest();"></td>
+	<td><input type="input" id="n2" value=100 oninput="runtest();"></td>
+</tr>
+<tr>
+	<td>Effect Size</td>
+	<td colspan="2"><div id="d"></div></td>
+</tr>
+</table>
+
+<div align="center">
+	<a href="ab-bern.html">Bernoulli Trial</a> |
+	<a href="ab-poi.html">Count Data</a> |
+	<a href="ab-ttest.html">2 Sample T-Test</a> |
+	<a href="ab-sample-size.html">Sample Size Calculator</a> |
+	<a href="Stats4Hackers.html">Stats for hackers</a> |
+	<a href="abtesting.html">A/B Testing Basics</a>
+</div>
+<p align="center">
+	<font size="-2">Disclaimer: this awesome online tool is created for fun, and estimation; use at your own risk!</font>
+</p>
+
+<script lang="jscript">runtest();</script>
+
+</body>
+</html>

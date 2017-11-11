@@ -1,0 +1,265 @@
+<html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.5.3/jstat.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="mcmc.js"></script>
+<script src="distributions.js"></script>
+
+<script lang="jscript">
+// Parameters
+// TODO: add monitor parameters mu1-mu2 and log(nu)/log(10)
+var params = {
+  mu1: {type: "real"},
+  sd1: {type: "real", lower: 0},
+  mu2: {type: "real"},
+  sd2: {type: "real", lower: 0},
+  nu : {type: "real"}
+};
+
+// Posterior
+var log_post = function(theta, data) {
+	if(theta.sd1 <=0 || theta.sd2 <=0){return;}
+
+  var log_post = 0;
+	var poold = data.x.concat(data.y);
+
+	var mu = jStat.mean(poold);
+	var sd = jStat.stdev(poold);
+  // Priors
+  log_post += ld.norm(theta.mu1, mu, sd*1000);
+  log_post += ld.norm(theta.mu2, mu, sd*1000);
+  log_post += ld.unif(theta.sd1, sd/1000, sd*1000);
+  log_post += ld.unif(theta.sd2, sd/1000, sd*1000);
+  log_post += ld.exp(theta.nu-1, 1/29);
+  // Likelihood
+  for(var i = 0; i < data.y.length; i++) {
+    log_post += ld.t(data.x[i], theta.mu1, theta.sd1, theta.nu);
+    log_post += ld.t(data.y[i], theta.mu2, theta.sd2, theta.nu);
+  }
+  return log_post;
+};
+
+function ttest(t1, t2){
+	var data = {
+		x: t1,
+	  y: t2
+	};
+
+	var nmc = 20000; // mcmc
+	var nbi = 20000; //burn-in
+	var sampler =  new mcmc.AmwgSampler(params, log_post, data);
+	sampler.burn(nbi);
+	var samples = sampler.sample(nmc);
+
+	var mu_diff = [];
+	var normality = [];
+	for(i=0;i<nmc; i++){
+		mu_diff[i] = samples["mu1"][i] - samples["mu2"][i];
+		normality[i] = Math.log(samples["nu"][i])/Math.log(10);
+	}
+
+	var theta1 = {
+	 x: samples["mu1"],
+	 type: "histogram",
+	 name: "Mean 1",
+	 opacity: 0.5,
+	 marker: {
+			 color: 'green',
+		},
+	};
+	var theta2 = {
+	 x: samples["mu2"],
+	 type: "histogram",
+	 name: "Mean 2",
+	 opacity: 0.6,
+	 marker: {
+		 color: 'purple',
+			},
+	};
+
+	var theta3 = {
+	 x: samples["sd1"],
+	 type: "histogram",
+	 name: "Sigma 1",
+	 opacity: 0.5,
+	 marker: {
+			 color: 'green',
+		},
+	};
+	var theta4 = {
+	 x: samples["sd2"],
+	 type: "histogram",
+	 name: "Sigma 2",
+	 opacity: 0.6,
+	 marker: {
+		 color: 'purple',
+			},
+	};
+	var theta5 = {
+	 x: mu_diff,
+	 type: "histogram",
+	 name: "nu",
+	 opacity: 0.6,
+	 marker: {
+		 color: 'blue',
+			},
+	};
+	var theta6 = {
+	 x: normality,
+	 type: "histogram",
+	 name: "nu",
+	 opacity: 0.6,
+	 marker: {
+		 color: 'grey',
+			},
+	};
+
+	var layout = {
+		width: 400,
+		height: 300
+	};
+	canvas_mu1 = document.getElementById('canvas_mu1');
+	canvas_mu2 = document.getElementById('canvas_mu2');
+	canvas_sd1 = document.getElementById('canvas_sd1');
+	canvas_sd2 = document.getElementById('canvas_sd2');
+	canvas_mu_diff = document.getElementById('canvas_mu_diff');
+	canvas_nu = document.getElementById('canvas_nu');
+
+
+
+	Plotly.newPlot(canvas_mu1, [theta1], layout);
+	Plotly.newPlot(canvas_mu2, [theta2], layout);
+	Plotly.newPlot(canvas_sd1, [theta3], layout);
+	Plotly.newPlot(canvas_sd2, [theta4], layout);
+	Plotly.newPlot(canvas_mu_diff, [theta5], layout);
+	Plotly.newPlot(canvas_nu, [theta6], layout);
+
+/*
+	trace_mu1 = document.getElementById('trace_mu1');
+	trace_mu2 = document.getElementById('trace_mu2');
+	trace_sd1 = document.getElementById('trace_sd1');
+	trace_sd2 = document.getElementById('trace_sd2');
+	trace_mu_diff = document.getElementById('trace_mu_diff');
+	trace_nu = document.getElementById('trace_nu');
+
+	var trace1 = {
+	 y: samples["mu1"],
+	 type: "scatter",
+	 name: "Mean 1",
+	 opacity: 0.5,
+	 marker: {
+			 color: '#66CC00',
+		},
+	};
+	var trace2 = {
+	 y: samples["mu2"],
+	 type: "scatter",
+	 name: "Mean 1",
+	 opacity: 0.5,
+	 marker: {
+			 color: '#66CC00',
+		},
+	};
+	var trace3 = {
+	 y: samples["sd1"],
+	 type: "scatter",
+	 name: "Mean 1",
+	 opacity: 0.5,
+	 marker: {
+			 color: '#66CC00',
+		},
+	};
+	var trace4 = {
+	 y: samples["sd2"],
+	 type: "scatter",
+	 name: "Mean 1",
+	 opacity: 0.5,
+	 marker: {
+			 color: '#66CC00',
+		},
+	};
+	var trace5 = {
+	 y: mu_diff,
+	 type: "scatter",
+	 name: "Mean 1",
+	 opacity: 0.5,
+	 marker: {
+			 color: '#66CC00',
+		},
+	};
+	var trace6 = {
+	 y: normality,
+	 type: "scatter",
+	 name: "Mean 1",
+	 opacity: 0.5,
+	 marker: {
+			 color: '#66CC00',
+		},
+	};
+	Plotly.newPlot(trace_mu1, [trace1], layout);
+	Plotly.newPlot(trace_mu2, [trace2], layout);
+	Plotly.newPlot(trace_sd1, [trace3], layout);
+	Plotly.newPlot(trace_sd2, [trace4], layout);
+	Plotly.newPlot(trace_mu_diff, [trace5], layout);
+	Plotly.newPlot(trace_nu, [trace6], layout);
+*/
+}
+
+function runtest(){
+	var t1 = document.getElementById("t1").value.split(" ").map(Number);
+	var t2 = document.getElementById("t2").value.split(" ").map(Number);
+
+	ttest(t1, t2);
+}
+
+</script>
+<body>
+
+<table align="center" border=0>
+<tr>
+	<td><div id=trace_mu1></div></td>
+	<td><div id="canvas_mu1"></div></td>
+	<td><div id=trace_sd1></div></td>
+	<td><div id="canvas_sd1"></div></td>
+</tr>
+<tr>
+	<td><div id=trace_mu2></div></td>
+	<td><div id="canvas_mu2"></div></td>
+	<td><div id=trace_sd2></div></td>
+	<td><div id="canvas_sd2"></div></td>
+</tr>
+<tr>
+	<td><div id=trace_mu_diff></div></td>
+	<td><div id="canvas_mu_diff"></div></td>
+	<td><div id=trace_nu></div></td>
+	<td><div id="canvas_nu"></div></td>
+</tr>
+</table>
+<table align="center" border=0>
+<tr>
+<th>Sample I</th>
+<th>Sample II </th>
+</tr>
+
+<tr>
+<td><input type="input" id="t1" value="5 7 5 3 5 3 3 9" rows=10 cols=5 style="height:90px"></td>
+<td><input type="input" id="t2" value="8 1 4 6 6 4 1 2" rows=10 cols=5 style="height:90px"></td>
+</tr>
+<tr>
+  <td colspan="2"><input type="button" value="Run Test" id=btn onclick="runtest()" /></td>
+</tr>
+</table>
+
+<div align="center">
+	<a href="ab-bern.html">Bernoulli Trial</a> |
+	<a href="ab-poi.html">Count Data</a> |
+	<a href="ab-ttest.html">2 Sample T-Test</a>  |
+	<a href="ab-sample-size.html">Sample Size Calculator</a> |
+	<a href="Stats4Hackers.html">Stats for hackers</a> |
+	<a href="abtesting.html">A/B Testing Basics</a>
+</div>
+<p align="center">
+	<font size="-2">Disclaimer: this awesome online tool is created for fun, and estimation; use at your own risk!</font>
+</p>
+
+</body>
+</html>
